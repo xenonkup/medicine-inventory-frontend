@@ -57,3 +57,40 @@ export interface Medicine {
   description?: string | null;
   is_active: boolean;
 }
+
+export interface Lot {
+  id: string;
+  medicine_id: string;
+  lot_number: string;
+  expiry_date: string;
+  qty_received: number;
+  qty_remaining: number;
+  received_date: string;
+}
+
+export interface Allocation {
+  lot_id: string;
+  lot_number: string;
+  expiry_date: string;
+  deducted: number;
+}
+
+export interface StockOutResult {
+  medicine_id: string;
+  total_quantity: number;
+  allocations: Allocation[];
+}
+
+export type TxType = "IN" | "OUT" | "RETURN";
+
+export interface StockTransaction {
+  id: string;
+  lot_id: string;
+  medicine_id: string;
+  type: TxType;
+  quantity: number;
+  reference_no?: string | null;
+  note?: string | null;
+  created_by: string;
+  created_at: string;
+}

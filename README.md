@@ -34,4 +34,5 @@ npm run dev               # http://localhost:3000
 ## Roadmap
 - [x] Phase 0/1 — Setup + Auth & Users
 - [x] Phase 2 — Master data (Category, Medicine)
-- [ ] Phase 3 — Inventory (Stock In/Out FEFO, Return) · Phase 4-6 — Dashboard/LINE/Reports/Deploy
+- [x] Phase 3 — Inventory (Stock In/Out **FEFO**, Return; allocation result view)
+- [ ] Phase 4-6 — Dashboard/LINE/Reports/Deploy
