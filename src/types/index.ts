@@ -81,6 +81,32 @@ export interface StockOutResult {
   allocations: Allocation[];
 }
 
+export interface DashboardSummary {
+  total_medicines: number;
+  near_expiry_count: number;
+  low_stock_count: number;
+  today_movements: number;
+  near_expiry_days: number;
+}
+
+export interface NearExpiryItem {
+  medicine_id: string;
+  medicine_name: string;
+  lot_number: string;
+  expiry_date: string;
+  qty_remaining: number;
+  days_left: number;
+}
+
+export interface LowStockItem {
+  medicine_id: string;
+  code: string;
+  name: string;
+  unit: string;
+  stock_on_hand: number;
+  reorder_level: number;
+}
+
 export type TxType = "IN" | "OUT" | "RETURN";
 
 export interface StockTransaction {

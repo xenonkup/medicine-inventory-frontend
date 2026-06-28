@@ -35,4 +35,5 @@ npm run dev               # http://localhost:3000
 - [x] Phase 0/1 — Setup + Auth & Users
 - [x] Phase 2 — Master data (Category, Medicine)
 - [x] Phase 3 — Inventory (Stock In/Out **FEFO**, Return; allocation result view)
-- [ ] Phase 4-6 — Dashboard/LINE/Reports/Deploy
+- [x] Phase 4a — Dashboard (real KPIs, near-expiry + low-stock tables)
+- [ ] Phase 4b LINE · Phase 5 Reports/Excel · Phase 6 Deploy
