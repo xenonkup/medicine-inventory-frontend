@@ -1,3 +1,17 @@
+import {
+  LayoutDashboard,
+  Pill,
+  Tag,
+  PackageSearch,
+  PackagePlus,
+  PackageMinus,
+  RotateCcw,
+  Truck,
+  BarChart3,
+  Users,
+  Settings,
+  type LucideIcon,
+} from "lucide-react";
 import type { Role } from "@/types";
 
 export const ROUTES = {
@@ -19,21 +33,61 @@ export const ROLE_LABELS: Record<Role, string> = {
   STAFF: "เจ้าหน้าที่",
 };
 
-// Navigation items. `adminOnly` items are hidden from STAFF in the sidebar.
 export interface NavItem {
   label: string;
   href: string;
+  icon: LucideIcon;
   adminOnly?: boolean;
+  badge?: string;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { label: "แดชบอร์ด", href: ROUTES.dashboard },
-  { label: "จัดการยา", href: ROUTES.medicines, adminOnly: true },
-  { label: "หมวดหมู่", href: ROUTES.categories, adminOnly: true },
-  { label: "รับเข้า (Stock In)", href: ROUTES.stockIn },
-  { label: "จ่ายออก (Stock Out)", href: ROUTES.stockOut },
-  { label: "รับคืน (Return)", href: ROUTES.returns },
-  { label: "รายงาน", href: ROUTES.reports, adminOnly: true },
-  { label: "ผู้ใช้งาน", href: ROUTES.users, adminOnly: true },
-  { label: "ตั้งค่า", href: ROUTES.settings, adminOnly: true },
+  { label: "แดชบอร์ด", href: ROUTES.dashboard, icon: LayoutDashboard },
+  { label: "จัดการยา", href: ROUTES.medicines, icon: Pill, adminOnly: true },
+  { label: "หมวดหมู่", href: ROUTES.categories, icon: Tag, adminOnly: true },
+  { label: "รับเข้า", href: ROUTES.stockIn, icon: PackagePlus },
+  { label: "จ่ายออก", href: ROUTES.stockOut, icon: PackageMinus },
+  { label: "รับคืน", href: ROUTES.returns, icon: RotateCcw },
+  { label: "รายงาน", href: ROUTES.reports, icon: BarChart3, adminOnly: true },
+  { label: "ผู้ใช้งาน", href: ROUTES.users, icon: Users, adminOnly: true },
+  { label: "ตั้งค่า", href: ROUTES.settings, icon: Settings, adminOnly: true },
 ];
+
+export const PAGE_TITLES: Record<string, { title: string; description: string }> = {
+  [ROUTES.dashboard]: {
+    title: "แดชบอร์ด",
+    description: "ภาพรวมคลังยา",
+  },
+  [ROUTES.medicines]: {
+    title: "จัดการยา",
+    description: "ข้อมูลหลักของยาในคลัง",
+  },
+  [ROUTES.categories]: {
+    title: "หมวดหมู่ยา",
+    description: "จัดการหมวดหมู่สำหรับจัดกลุ่มยา",
+  },
+  [ROUTES.stockIn]: {
+    title: "รับเข้าคลัง",
+    description: "บันทึกการรับยาเข้าคลังเป็นล็อต",
+  },
+  [ROUTES.stockOut]: {
+    title: "จ่ายออกคลัง",
+    description: "ระบบจะตัดจากล็อตที่หมดอายุก่อนโดยอัตโนมัติ (FEFO)",
+  },
+  [ROUTES.returns]: {
+    title: "รับคืน",
+    description: "รับยาคืนเข้าล็อตเดิม",
+  },
+  [ROUTES.reports]: {
+    title: "รายงาน",
+    description: "สรุปการเคลื่อนไหวสต็อกรายเดือน",
+  },
+  [ROUTES.users]: {
+    title: "ผู้ใช้งาน",
+    description: "จัดการบัญชีผู้ใช้และสิทธิ์",
+  },
+  [ROUTES.settings]: {
+    title: "ตั้งค่าระบบ",
+    description: "กำหนดค่าการแจ้งเตือนและพารามิเตอร์",
+  },
+};

@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { UserPlus, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +17,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormField } from "@/components/shared/form-field";
 import { useCreateUser } from "@/features/users/hooks";
 import type { Role } from "@/types";
 
@@ -63,48 +64,73 @@ export function CreateUserDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button />}>+ เพิ่มผู้ใช้</DialogTrigger>
-      <DialogContent>
+      <DialogTrigger
+        render={
+          <Button className="rounded-xl">
+            <UserPlus className="mr-2 h-4 w-4" />
+            เพิ่มผู้ใช้
+          </Button>
+        }
+      />
+      <DialogContent className="rounded-2xl">
         <DialogHeader>
           <DialogTitle>เพิ่มผู้ใช้ใหม่</DialogTitle>
-          <DialogDescription>กำหนดชื่อผู้ใช้ รหัสผ่าน และบทบาท</DialogDescription>
+          <DialogDescription>
+            กำหนดชื่อผู้ใช้ รหัสผ่าน และบทบาท
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="full_name">ชื่อ-นามสกุล</Label>
-            <Input id="full_name" {...register("full_name")} />
-            {errors.full_name && (
-              <p className="text-sm text-destructive">
-                {errors.full_name.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="username">ชื่อผู้ใช้</Label>
-            <Input id="username" {...register("username")} />
-            {errors.username && (
-              <p className="text-sm text-destructive">
-                {errors.username.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">รหัสผ่าน</Label>
-            <Input id="password" type="password" {...register("password")} />
-            {errors.password && (
-              <p className="text-sm text-destructive">
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label>บทบาท</Label>
-            <Select
-              items={{ STAFF: "เจ้าหน้าที่ (Staff)", ADMIN: "ผู้ดูแลระบบ (Admin)" }}
-              value={watch("role")}
-              onValueChange={(v) => setValue("role", (v as Role | null) ?? "STAFF")}
+          <FormField
+            label="ชื่อ-นามสกุล"
+            htmlFor="full_name"
+            required
+            error={errors.full_name?.message}
+          >
+            <Input
+              id="full_name"
+              className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
+              {...register("full_name")}
+            />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              label="ชื่อผู้ใช้"
+              htmlFor="username"
+              required
+              error={errors.username?.message}
             >
-              <SelectTrigger>
+              <Input
+                id="username"
+                className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
+                {...register("username")}
+              />
+            </FormField>
+            <FormField
+              label="รหัสผ่าน"
+              htmlFor="password"
+              required
+              error={errors.password?.message}
+            >
+              <Input
+                id="password"
+                type="password"
+                className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
+                {...register("password")}
+              />
+            </FormField>
+          </div>
+          <FormField label="บทบาท" required>
+            <Select
+              items={{
+                STAFF: "เจ้าหน้าที่ (Staff)",
+                ADMIN: "ผู้ดูแลระบบ (Admin)",
+              }}
+              value={watch("role")}
+              onValueChange={(v) =>
+                setValue("role", (v as Role | null) ?? "STAFF")
+              }
+            >
+              <SelectTrigger className="h-10 w-full rounded-xl bg-muted/50 transition-colors data-[popup-open]:bg-background">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -112,10 +138,24 @@ export function CreateUserDialog() {
                 <SelectItem value="ADMIN">ผู้ดูแลระบบ (Admin)</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </FormField>
           <DialogFooter>
-            <Button type="submit" disabled={createUser.isPending}>
-              {createUser.isPending ? "กำลังบันทึก..." : "บันทึก"}
+            <Button
+              type="submit"
+              className="rounded-xl"
+              disabled={createUser.isPending}
+            >
+              {createUser.isPending ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  กำลังบันทึก...
+                </span>
+              ) : (
+                <>
+                  <Save className="mr-1.5 h-4 w-4" />
+                  บันทึก
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

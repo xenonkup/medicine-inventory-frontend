@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { Save, Pill } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +17,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FormField } from "@/components/shared/form-field";
 import { useCategories } from "@/features/categories/hooks";
 import {
   useCreateMedicine,
@@ -103,44 +104,69 @@ export function MedicineDialog({ medicine, trigger }: Props) {
 
   const pending = createMedicine.isPending || updateMedicine.isPending;
   const categories = categoriesData?.categories.filter((c) => c.is_active) ?? [];
-  // Base UI needs `items` to show the selected label (not the raw UUID).
-  const categoryItems = Object.fromEntries(categories.map((c) => [c.id, c.name]));
+  const categoryItems = Object.fromEntries(
+    categories.map((c) => [c.id, c.name]),
+  );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={trigger as React.ReactElement} />
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "แก้ไขยา" : "เพิ่มยา"}</DialogTitle>
-          <DialogDescription>กรอกข้อมูลยาและจุดสั่งซื้อขั้นต่ำ</DialogDescription>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Pill className="h-4 w-4" />
+            </div>
+            <div>
+              <DialogTitle>{isEdit ? "แก้ไขยา" : "เพิ่มยา"}</DialogTitle>
+              <DialogDescription>
+                กรอกข้อมูลยาและจุดสั่งซื้อขั้นต่ำ
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="code">รหัสยา</Label>
-              <Input id="code" {...register("code")} />
-              {errors.code && (
-                <p className="text-sm text-destructive">{errors.code.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="unit">หน่วยนับ</Label>
-              <Input id="unit" placeholder="เม็ด, ขวด, กล่อง" {...register("unit")} />
-              {errors.unit && (
-                <p className="text-sm text-destructive">{errors.unit.message}</p>
-              )}
-            </div>
+            <FormField
+              label="รหัสยา"
+              htmlFor="code"
+              required
+              error={errors.code?.message}
+            >
+              <Input
+                id="code"
+                className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
+                {...register("code")}
+              />
+            </FormField>
+            <FormField
+              label="หน่วยนับ"
+              htmlFor="unit"
+              required
+              error={errors.unit?.message}
+            >
+              <Input
+                id="unit"
+                placeholder="เม็ด, ขวด, กล่อง"
+                className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
+                {...register("unit")}
+              />
+            </FormField>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="name">ชื่อยา</Label>
-            <Input id="name" {...register("name")} />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            )}
-          </div>
+          <FormField
+            label="ชื่อยา"
+            htmlFor="name"
+            required
+            error={errors.name?.message}
+          >
+            <Input
+              id="name"
+              className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
+              {...register("name")}
+            />
+          </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>หมวดหมู่</Label>
+            <FormField label="หมวดหมู่" required error={errors.category_id?.message}>
               <Select
                 items={categoryItems}
                 value={watch("category_id")}
@@ -150,7 +176,7 @@ export function MedicineDialog({ medicine, trigger }: Props) {
                   })
                 }
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="h-10 w-full rounded-xl bg-muted/50 transition-colors data-[popup-open]:bg-background">
                   <SelectValue placeholder="เลือกหมวดหมู่" />
                 </SelectTrigger>
                 <SelectContent>
@@ -161,34 +187,46 @@ export function MedicineDialog({ medicine, trigger }: Props) {
                   ))}
                 </SelectContent>
               </Select>
-              {errors.category_id && (
-                <p className="text-sm text-destructive">
-                  {errors.category_id.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="reorder_level">จุดสั่งซื้อขั้นต่ำ</Label>
+            </FormField>
+            <FormField
+              label="จุดสั่งซื้อขั้นต่ำ"
+              htmlFor="reorder_level"
+              required
+              error={errors.reorder_level?.message}
+            >
               <Input
                 id="reorder_level"
                 type="number"
                 min={0}
+                className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
                 {...register("reorder_level", { valueAsNumber: true })}
               />
-              {errors.reorder_level && (
-                <p className="text-sm text-destructive">
-                  {errors.reorder_level.message}
-                </p>
-              )}
-            </div>
+            </FormField>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">คำอธิบาย (ไม่บังคับ)</Label>
-            <Input id="description" {...register("description")} />
-          </div>
+          <FormField label="คำอธิบาย" htmlFor="description" optional>
+            <Input
+              id="description"
+              className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
+              {...register("description")}
+            />
+          </FormField>
           <DialogFooter>
-            <Button type="submit" disabled={pending}>
-              {pending ? "กำลังบันทึก..." : "บันทึก"}
+            <Button
+              type="submit"
+              className="rounded-xl"
+              disabled={pending}
+            >
+              {pending ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  กำลังบันทึก...
+                </span>
+              ) : (
+                <>
+                  <Save className="mr-1.5 h-4 w-4" />
+                  บันทึก
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>

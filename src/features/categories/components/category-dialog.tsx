@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { Save, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FormField } from "@/components/shared/form-field";
 import {
   useCreateCategory,
   useUpdateCategory,
@@ -88,24 +89,57 @@ export function CategoryDialog({ category, trigger }: Props) {
       <DialogTrigger render={trigger as React.ReactElement} />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{isEdit ? "แก้ไขหมวดหมู่" : "เพิ่มหมวดหมู่"}</DialogTitle>
-          <DialogDescription>กำหนดชื่อและคำอธิบายหมวดหมู่ยา</DialogDescription>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Tag className="h-4 w-4" />
+            </div>
+            <div>
+              <DialogTitle>
+                {isEdit ? "แก้ไขหมวดหมู่" : "เพิ่มหมวดหมู่"}
+              </DialogTitle>
+              <DialogDescription>
+                กำหนดชื่อและคำอธิบายหมวดหมู่ยา
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">ชื่อหมวดหมู่</Label>
-            <Input id="name" {...register("name")} />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">คำอธิบาย (ไม่บังคับ)</Label>
-            <Input id="description" {...register("description")} />
-          </div>
+          <FormField
+            label="ชื่อหมวดหมู่"
+            htmlFor="name"
+            required
+            error={errors.name?.message}
+          >
+            <Input
+              id="name"
+              className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
+              {...register("name")}
+            />
+          </FormField>
+          <FormField label="คำอธิบาย" htmlFor="description" optional>
+            <Input
+              id="description"
+              className="h-10 rounded-xl bg-muted/50 transition-colors focus-visible:bg-background"
+              {...register("description")}
+            />
+          </FormField>
           <DialogFooter>
-            <Button type="submit" disabled={pending}>
-              {pending ? "กำลังบันทึก..." : "บันทึก"}
+            <Button
+              type="submit"
+              className="rounded-xl"
+              disabled={pending}
+            >
+              {pending ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  กำลังบันทึก...
+                </span>
+              ) : (
+                <>
+                  <Save className="mr-1.5 h-4 w-4" />
+                  บันทึก
+                </>
+              )}
             </Button>
           </DialogFooter>
         </form>
