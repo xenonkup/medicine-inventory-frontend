@@ -100,8 +100,9 @@ export function CreateUserDialog() {
           <div className="space-y-2">
             <Label>บทบาท</Label>
             <Select
+              items={{ STAFF: "เจ้าหน้าที่ (Staff)", ADMIN: "ผู้ดูแลระบบ (Admin)" }}
               value={watch("role")}
-              onValueChange={(v) => setValue("role", v as Role)}
+              onValueChange={(v) => setValue("role", (v as Role | null) ?? "STAFF")}
             >
               <SelectTrigger>
                 <SelectValue />

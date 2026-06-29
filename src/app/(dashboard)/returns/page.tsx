@@ -55,6 +55,11 @@ export default function ReturnsPage() {
   const medicineId = watch("medicine_id");
   const { data: lots } = useLots(medicineId);
 
+  const lotLabel = (l: NonNullable<typeof lots>[number]) =>
+    `${l.lot_number} — หมดอายุ ${l.expiry_date} (คงเหลือ ${l.qty_remaining}/${l.qty_received})`;
+  // Base UI needs `items` so the trigger shows the lot label, not the UUID.
+  const lotItems = Object.fromEntries((lots ?? []).map((l) => [l.id, lotLabel(l)]));
+
   const onSubmit = (values: FormValues) => {
     stockReturn.mutate(
       {
@@ -101,6 +106,7 @@ export default function ReturnsPage() {
             <div className="space-y-2">
               <Label>ล็อต</Label>
               <Select
+                items={lotItems}
                 value={watch("lot_id")}
                 onValueChange={(v) =>
                   setValue("lot_id", (v as string | null) ?? "", {
@@ -115,8 +121,7 @@ export default function ReturnsPage() {
                 <SelectContent>
                   {(lots ?? []).map((l) => (
                     <SelectItem key={l.id} value={l.id}>
-                      {l.lot_number} — หมดอายุ {l.expiry_date} (คงเหลือ{" "}
-                      {l.qty_remaining}/{l.qty_received})
+                      {lotLabel(l)}
                     </SelectItem>
                   ))}
                 </SelectContent>

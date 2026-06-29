@@ -103,6 +103,8 @@ export function MedicineDialog({ medicine, trigger }: Props) {
 
   const pending = createMedicine.isPending || updateMedicine.isPending;
   const categories = categoriesData?.categories.filter((c) => c.is_active) ?? [];
+  // Base UI needs `items` to show the selected label (not the raw UUID).
+  const categoryItems = Object.fromEntries(categories.map((c) => [c.id, c.name]));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -140,6 +142,7 @@ export function MedicineDialog({ medicine, trigger }: Props) {
             <div className="space-y-2">
               <Label>หมวดหมู่</Label>
               <Select
+                items={categoryItems}
                 value={watch("category_id")}
                 onValueChange={(v) =>
                   setValue("category_id", (v as string | null) ?? "", {
