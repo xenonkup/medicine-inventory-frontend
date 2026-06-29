@@ -21,6 +21,8 @@ import {
   useLowStock,
   useNearExpiry,
 } from "@/features/dashboard/hooks";
+import { StockByCategoryChart } from "@/features/reports/components/charts";
+import { useStockByCategory } from "@/features/reports/hooks";
 import { useAuth } from "@/providers/auth-provider";
 
 export default function DashboardPage() {
@@ -28,6 +30,7 @@ export default function DashboardPage() {
   const { data: summary } = useDashboardSummary();
   const { data: nearExpiry } = useNearExpiry();
   const { data: lowStock } = useLowStock();
+  const { data: stockByCat } = useStockByCategory();
 
   const cards = [
     { title: "รายการยาทั้งหมด", value: summary?.total_medicines },
@@ -67,6 +70,16 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">📊 สต็อกแยกตามหมวดหมู่</CardTitle>
+          <CardDescription>ยอดคงเหลือปัจจุบันของแต่ละหมวดหมู่</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {stockByCat && <StockByCategoryChart data={stockByCat} />}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>

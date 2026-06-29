@@ -107,6 +107,32 @@ export interface LowStockItem {
   reorder_level: number;
 }
 
+export interface MovementByType {
+  type: TxType;
+  count: number;
+  total_qty: number;
+}
+
+export interface MonthlyReport {
+  year: number;
+  month: number;
+  movements: MovementByType[];
+  total_in: number;
+  total_out: number;
+  total_return: number;
+}
+
+export interface CategoryStockItem {
+  category: string;
+  stock: number;
+}
+
+export interface Setting {
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
 export type TxType = "IN" | "OUT" | "RETURN";
 
 export interface StockTransaction {
