@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -22,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { TablePager } from "@/components/shared/table-pager";
 import { PageHeader, SectionCard } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
@@ -30,8 +32,10 @@ import {
 } from "@/features/reports/components/charts";
 import {
   useMonthlyReport,
+  useMovements,
   useStockByCategory,
 } from "@/features/reports/hooks";
+import { useClientTable } from "@/hooks/use-client-table";
 
 const TYPE_LABELS: Record<string, string> = {
   IN: "รับเข้า",
@@ -55,11 +59,30 @@ const MONTHS = [
 
 export default function ReportsPage() {
   const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  const [mode, setMode] = useState<"month" | "range">("month");
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [from, setFrom] = useState(
+    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-01`,
+  );
+  const [to, setTo] = useState(
+    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+  );
 
-  const { data: report } = useMonthlyReport(year, month);
+  const { data: monthly } = useMonthlyReport(year, month);
+  const { data: ranged } = useMovements(from, to, mode === "range");
+  const report = mode === "range" ? ranged : monthly;
+
   const { data: stockByCat } = useStockByCategory();
+  const movementTable = useClientTable(report?.movements ?? [], {
+    initialPageSize: 10,
+  });
+
+  const years = [now.getFullYear() - 2, now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
+  const selectClass =
+    "h-9 rounded-xl border bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   const kpis = [
     {
@@ -105,41 +128,111 @@ export default function ReportsPage() {
         }
       />
 
-      {/* Month navigator */}
-      <div className="flex items-center justify-center">
-        <div className="flex items-center gap-2 rounded-2xl border bg-card p-1.5 shadow-sm">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-xl"
-            onClick={() => {
-              if (month === 1) {
-                setMonth(12);
-                setYear((y) => y - 1);
-              } else setMonth((m) => m - 1);
-            }}
-            aria-label="เดือนก่อนหน้า"
+      {/* Filters: by month or by date range */}
+      <div className="flex flex-col gap-3 rounded-2xl border bg-card p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-1 rounded-xl bg-muted/40 p-1 text-sm">
+          <button
+            type="button"
+            onClick={() => setMode("month")}
+            className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+              mode === "month"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[140px] text-center text-sm font-medium">
-            {MONTHS[month - 1]} {year}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-xl"
-            onClick={() => {
-              if (month === 12) {
-                setMonth(1);
-                setYear((y) => y + 1);
-              } else setMonth((m) => m + 1);
-            }}
-            aria-label="เดือนถัดไป"
+            รายเดือน
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("range")}
+            className={`rounded-lg px-3 py-1.5 font-medium transition-colors ${
+              mode === "range"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+            ช่วงวันที่
+          </button>
         </div>
+
+        {mode === "month" ? (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-xl"
+                onClick={() => {
+                  if (month === 1) {
+                    setMonth(12);
+                    setYear((y) => y - 1);
+                  } else setMonth((m) => m - 1);
+                }}
+                aria-label="เดือนก่อนหน้า"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <select
+                value={month}
+                onChange={(e) => setMonth(Number(e.target.value))}
+                className={selectClass}
+                aria-label="เลือกเดือน"
+              >
+                {MONTHS.map((m, i) => (
+                  <option key={m} value={i + 1}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={year}
+                onChange={(e) => setYear(Number(e.target.value))}
+                className={selectClass}
+                aria-label="เลือกปี"
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-xl"
+                onClick={() => {
+                  if (month === 12) {
+                    setMonth(1);
+                    setYear((y) => y + 1);
+                  } else setMonth((m) => m + 1);
+                }}
+                aria-label="เดือนถัดไป"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={from}
+              max={to || undefined}
+              onChange={(e) => setFrom(e.target.value)}
+              className="h-9 w-auto rounded-xl"
+              aria-label="ตั้งแต่วันที่"
+            />
+            <span className="text-sm text-muted-foreground">ถึง</span>
+            <Input
+              type="date"
+              value={to}
+              min={from || undefined}
+              onChange={(e) => setTo(e.target.value)}
+              className="h-9 w-auto rounded-xl"
+              aria-label="ถึงวันที่"
+            />
+          </div>
+        )}
       </div>
 
       {/* KPI cards */}
@@ -221,40 +314,56 @@ export default function ReportsPage() {
         description="สรุปการเคลื่อนไหวแยกตามประเภท"
       >
         <div className="rounded-xl border">
-          <Table>
+          <Table className="table-fixed">
+            <colgroup>
+              <col className="w-[20%]" />
+              <col className="w-[20%]" />
+              <col className="w-[20%]" />
+            </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent bg-muted/30">
-                <TableHead className="text-xs font-semibold">ประเภท</TableHead>
-                <TableHead className="w-40 text-right text-xs font-semibold">จำนวนรายการ</TableHead>
-                <TableHead className="w-36 text-right text-xs font-semibold">รวมหน่วย</TableHead>
+                <TableHead className="text-center text-xs font-semibold">ประเภท</TableHead>
+                <TableHead className="text-center text-xs font-semibold">จำนวนรายการ</TableHead>
+                <TableHead className="text-center text-xs font-semibold">รวมหน่วย</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(report?.movements ?? []).length === 0 ? (
+              {movementTable.total === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="h-24 text-center text-sm text-muted-foreground">
                     ไม่มีข้อมูลเดือนนี้
                   </TableCell>
                 </TableRow>
               ) : (
-                (report?.movements ?? []).map((m) => (
+                movementTable.pageItems.map((m) => (
                   <TableRow key={m.type} className="hover:bg-muted/50">
                     <TableCell>
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-center justify-center gap-2.5">
                         <div className={`h-2 w-2 rounded-full ${m.type === "IN" ? "bg-success" :
                             m.type === "OUT" ? "bg-destructive" : "bg-warning"
                           }`} />
                         <span className="text-sm font-medium">{TYPE_LABELS[m.type] ?? m.type}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right text-sm tabular-nums">{m.count.toLocaleString()}</TableCell>
-                    <TableCell className="text-right text-sm font-semibold tabular-nums">{m.total_qty.toLocaleString()}</TableCell>
+                    <TableCell className="text-center text-sm tabular-nums">{m.count.toLocaleString()}</TableCell>
+                    <TableCell className="text-center text-sm font-semibold tabular-nums">{m.total_qty.toLocaleString()}</TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
         </div>
+        {movementTable.total > 0 && (
+          <TablePager
+            page={movementTable.page}
+            pageCount={movementTable.pageCount}
+            pageSize={movementTable.pageSize}
+            total={movementTable.total}
+            start={movementTable.start}
+            onPageChange={movementTable.setPage}
+            onPageSizeChange={movementTable.setPageSize}
+          />
+        )}
       </SectionCard>
     </div>
   );

@@ -15,10 +15,12 @@ import {
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
+import { TablePager } from "@/components/shared/table-pager";
 import { ActiveBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { CategoryDialog } from "@/features/categories/components/category-dialog";
 import { useCategories, useDeleteCategory } from "@/features/categories/hooks";
+import { useClientTable } from "@/hooks/use-client-table";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import type { Category } from "@/types";
@@ -47,6 +49,9 @@ export default function CategoriesPage() {
     if (statusFilter === "inactive" && c.is_active) return false;
     return true;
   });
+  const categoryTable = useClientTable(filtered, {
+    initialPageSize: 10,
+  });
 
   return (
     <div className="space-y-5">
@@ -61,8 +66,19 @@ export default function CategoriesPage() {
         }
       />
 
+      {/* Table card */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="overflow-hidden rounded-xl border bg-card shadow-sm"
+        onClick={() => setShowStatusMenu(false)}
+      >
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div
+        className="flex flex-wrap items-center gap-2 border-b p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -125,16 +141,8 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      {/* Table card */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-        className="overflow-hidden rounded-xl border bg-card shadow-sm"
-        onClick={() => setShowStatusMenu(false)}
-      >
         {isLoading ? (
-          <div className="p-4"><TableSkeleton rows={5} columns={4} /></div>
+          <div className="p-4"><TableSkeleton rows={5} columns={5} /></div>
         ) : isError ? (
           <div className="py-16"><EmptyState title="เกิดข้อผิดพลาด" description="ไม่สามารถโหลดข้อมูลได้" variant="error" /></div>
         ) : filtered.length === 0 ? (
@@ -147,18 +155,26 @@ export default function CategoriesPage() {
             )}
           </div>
         ) : (
-          <Table>
+          <div className="mx-4 mt-4 rounded-xl border">
+          <Table className="table-fixed">
+            <colgroup>
+              <col className="w-[10%]" />
+              <col className="w-[28%]" />
+              <col className="w-[34%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+            </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-20 text-xs font-semibold">#</TableHead>
-                <TableHead className="w-20 text-xs font-semibold">ชื่อหมวดหมู่</TableHead>
-                <TableHead className="w-20 text-xs font-semibold">คำอธิบาย</TableHead>
-                <TableHead className="w-20 text-xs font-semibold">สถานะ</TableHead>
-                <TableHead className="w-12 px-4" />
+                <TableHead className="text-center text-xs font-semibold">#</TableHead>
+                <TableHead className="text-center text-xs font-semibold">ชื่อหมวดหมู่</TableHead>
+                <TableHead className="text-center text-xs font-semibold">คำอธิบาย</TableHead>
+                <TableHead className="text-center text-xs font-semibold">สถานะ</TableHead>
+                <TableHead className="text-center text-xs font-semibold" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((category: Category, index: number) => (
+              {categoryTable.pageItems.map((category: Category, index: number) => (
                 <motion.tr
                   key={category.id}
                   initial={{ opacity: 0 }}
@@ -167,17 +183,17 @@ export default function CategoriesPage() {
                   className="group border-b transition-colors last:border-0 hover:bg-muted/30"
                 >
                   {/* # */}
-                  <TableCell className="w-10 px-4 text-center">
-                    <span className="text-xs font-medium text-muted-foreground">{index + 1}</span>
+                  <TableCell className="px-4 text-center">
+                    <span className="text-xs font-medium text-muted-foreground">{categoryTable.start + index + 1}</span>
                   </TableCell>
 
                   {/* ชื่อ — 2 บรรทัด */}
                   <TableCell className="py-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
                         <Tag className="h-4 w-4" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold leading-tight">{category.name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                           {category.is_active ? "ใช้งานอยู่" : "ปิดใช้งาน"}
@@ -187,15 +203,15 @@ export default function CategoriesPage() {
                   </TableCell>
 
                   {/* คำอธิบาย */}
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-center text-sm text-muted-foreground">
                     {category.description || <span className="italic text-muted-foreground/40">ไม่มีคำอธิบาย</span>}
                   </TableCell>
 
                   {/* สถานะ */}
-                  <TableCell><ActiveBadge active={category.is_active} /></TableCell>
+                  <TableCell className="text-center"><ActiveBadge active={category.is_active} /></TableCell>
 
                   {/* Actions */}
-                  <TableCell className="px-4">
+                  <TableCell className="px-4 text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
@@ -219,15 +235,23 @@ export default function CategoriesPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
-      </motion.div>
-
       {/* Footer */}
       {data && filtered.length > 0 && (
-        <div className="px-1 text-xs text-muted-foreground">
-          แสดง <span className="font-medium text-foreground">{filtered.length}</span> รายการ
+        <div className="px-4 pb-4">
+          <TablePager
+            page={categoryTable.page}
+            pageCount={categoryTable.pageCount}
+            pageSize={categoryTable.pageSize}
+            total={categoryTable.total}
+            start={categoryTable.start}
+            onPageChange={categoryTable.setPage}
+            onPageSizeChange={categoryTable.setPageSize}
+          />
         </div>
       )}
+      </motion.div>
 
       <ConfirmDialog
         open={!!deleteTarget}

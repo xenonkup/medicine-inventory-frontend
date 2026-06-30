@@ -31,15 +31,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
+import { TablePager } from "@/components/shared/table-pager";
 import { StatusBadge, ActiveBadge } from "@/components/shared/status-badge";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { MedicineDialog } from "@/features/medicines/components/medicine-dialog";
 import { useDeleteMedicine, useMedicines } from "@/features/medicines/hooks";
 import { useCategories } from "@/features/categories/hooks";
+import { useClientTable } from "@/hooks/use-client-table";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
 import type { Medicine } from "@/types";
@@ -150,6 +151,9 @@ export default function MedicinesPage() {
     if (statusFilter === "inactive" && m.is_active) return false;
     return true;
   });
+  const medicineTable = useClientTable(filteredMedicines, {
+    initialPageSize: 10,
+  });
 
   const selectedCategory = catData?.categories.find((c) => c.id === categoryId);
   const closeMenus = () => { setShowCategoryMenu(false); setShowStockMenu(false); setShowStatusMenu(false); };
@@ -171,8 +175,19 @@ export default function MedicinesPage() {
         }
       />
 
+      {/* Table card */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="overflow-hidden rounded-xl border bg-card shadow-sm"
+        onClick={closeMenus}
+      >
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div
+        className="flex flex-wrap items-center gap-2 p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Search */}
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -294,14 +309,6 @@ export default function MedicinesPage() {
         </div>
       </div>
 
-      {/* Table card */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-        className="overflow-hidden rounded-xl border bg-card shadow-sm"
-        onClick={closeMenus}
-      >
         {isLoading ? (
           <div className="p-4"><TableSkeleton rows={6} columns={7} /></div>
         ) : isError ? (
@@ -316,22 +323,34 @@ export default function MedicinesPage() {
             )}
           </div>
         ) : (
-          <div className="rounded-xl border">
-          <Table>
+          <div className="mx-4 mt-4 rounded-xl border">
+          <Table className="table-fixed">
+            <colgroup>
+              <col className="w-[6%]" />
+              <col className="w-[20%]" />
+              <col className="w-[15%]" />
+              <col className="w-[9%]" />
+              <col className="w-[10%]" />
+              <col className="w-[10%]" />
+              <col className="w-[11%]" />
+              <col className="w-[14%]" />
+              <col className="w-[5%]" />
+            </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-20 text-xs font-semibold text-center">#</TableHead>
-                <TableHead className="w-20 text-xs font-semibold">ยา</TableHead>
-                <TableHead className="w-20 text-xs font-semibold">หมวดหมู่</TableHead>
-                <TableHead className="w-20 text-xs font-semibold">หน่วย</TableHead>
-                <TableHead className="w-20 text-xs font-semibold">คงเหลือ</TableHead>
-                <TableHead className="w-20 text-xs font-semibold">สั่งซื้อ</TableHead>
-                <TableHead className="w-20 text-xs font-semibold">สถานะ</TableHead>
-                <TableHead className="w-20 text-xs font-semibold ">สต็อก</TableHead>
+                <TableHead className="text-center text-xs font-semibold">#</TableHead>
+                <TableHead className="text-center text-xs font-semibold">ยา</TableHead>
+                <TableHead className="text-center text-xs font-semibold">หมวดหมู่</TableHead>
+                <TableHead className="text-center text-xs font-semibold">หน่วย</TableHead>
+                <TableHead className="text-center text-xs font-semibold">คงเหลือ</TableHead>
+                <TableHead className="text-center text-xs font-semibold">สั่งซื้อ</TableHead>
+                <TableHead className="text-center text-xs font-semibold">สถานะ</TableHead>
+                <TableHead className="text-center text-xs font-semibold">สต็อก</TableHead>
+                <TableHead className="text-center text-xs font-semibold" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMedicines.map((m: Medicine, index: number) => (
+              {medicineTable.pageItems.map((m: Medicine, index: number) => (
                 <motion.tr
                   key={m.id}
                   initial={{ opacity: 0 }}
@@ -340,11 +359,11 @@ export default function MedicinesPage() {
                   className="group border-b transition-colors last:border-0 hover:bg-muted/30"
                 >
                   {/* # */}
-                  <TableCell className="text-center">{index + 1}</TableCell>
+                  <TableCell className="text-center">{medicineTable.start + index + 1}</TableCell>
 
                   {/* ยา — 2 บรรทัด */}
                   <TableCell className="py-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
                         <Pill className="h-4 w-4" />
                       </div>
@@ -356,15 +375,15 @@ export default function MedicinesPage() {
                   </TableCell>
 
                   {/* หมวดหมู่ */}
-                  <TableCell>
-                    <span>{m.category_name}</span>
-                  </TableCell>
+                   <TableCell className="text-center">
+                     <span>{m.category_name}</span>
+                   </TableCell>
 
                   {/* หน่วย */}
-                  <TableCell>{m.unit}</TableCell>
+                  <TableCell className="text-center">{m.unit}</TableCell>
 
                   {/* คงเหลือ */}
-                  <TableCell>
+                  <TableCell className="text-center">
                     <span className={cn("text-sm font-bold tabular-nums",
                       m.stock_on_hand === 0 ? "text-destructive" :
                       m.stock_on_hand <= m.reorder_level ? "text-warning" : "text-foreground")}>
@@ -373,20 +392,20 @@ export default function MedicinesPage() {
                   </TableCell>
 
                   {/* จุดสั่งซื้อ */}
-                  <TableCell>
+                  <TableCell className="text-center">
                     {m.reorder_level.toLocaleString()}
                   </TableCell>
 
                   {/* สถานะ */}
-                  <TableCell><ActiveBadge active={m.is_active} /></TableCell>
+                  <TableCell className="text-center"><ActiveBadge active={m.is_active} /></TableCell>
 
                   {/* สต็อก */}
-                  <TableCell>
+                  <TableCell className="text-center">
                     <StatusBadge status={getStockStatus(m.stock_on_hand, m.reorder_level, m.is_active)} />
                   </TableCell>
 
                   {/* Actions */}
-                  <TableCell className="px-4">
+                  <TableCell className="px-4 text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger
                         render={
@@ -411,25 +430,23 @@ export default function MedicinesPage() {
               ))}
             </TableBody>
           </Table>
-        </div>
+          </div>
         )}
-      </motion.div>
-
       {/* Footer */}
       {data && filteredMedicines.length > 0 && (
-        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
-          <span>
-            แสดง <span className="font-medium text-foreground">{filteredMedicines.length.toLocaleString()}</span>
-            {data.total !== filteredMedicines.length && <> จาก <span className="font-medium text-foreground">{data.total.toLocaleString()}</span></>} รายการ
-          </span>
-          {data.total > (data.pageSize ?? 20) && (
-            <div className="flex items-center gap-1">
-              <Button variant="outline" size="sm" className="h-7 rounded-lg text-xs">ก่อนหน้า</Button>
-              <Button variant="outline" size="sm" className="h-7 rounded-lg text-xs">ถัดไป</Button>
-            </div>
-          )}
+        <div className="px-4 pb-4">
+          <TablePager
+            page={medicineTable.page}
+            pageCount={medicineTable.pageCount}
+            pageSize={medicineTable.pageSize}
+            total={medicineTable.total}
+            start={medicineTable.start}
+            onPageChange={medicineTable.setPage}
+            onPageSizeChange={medicineTable.setPageSize}
+          />
         </div>
       )}
+      </motion.div>
 
       <ConfirmDialog
         open={!!deleteTarget}

@@ -11,6 +11,14 @@ export function useMonthlyReport(year: number, month: number) {
   });
 }
 
+export function useMovements(from: string, to: string, enabled = true) {
+  return useQuery({
+    queryKey: ["reports", "movements", from, to],
+    queryFn: () => reportsApi.movements(from, to),
+    enabled: enabled && Boolean(from) && Boolean(to),
+  });
+}
+
 export function useStockByCategory() {
   return useQuery({
     queryKey: ["reports", "stock-by-category"],

@@ -31,6 +31,9 @@ export interface UserProfile {
   is_active: boolean;
 }
 
+// Alias used by user-management pages.
+export type User = UserProfile;
+
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;
@@ -116,6 +119,15 @@ export interface MovementByType {
 export interface MonthlyReport {
   year: number;
   month: number;
+  movements: MovementByType[];
+  total_in: number;
+  total_out: number;
+  total_return: number;
+}
+
+export interface MovementReport {
+  from: string;
+  to: string;
   movements: MovementByType[];
   total_in: number;
   total_out: number;

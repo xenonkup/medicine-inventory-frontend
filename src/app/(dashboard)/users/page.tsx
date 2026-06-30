@@ -20,9 +20,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { TableSkeleton } from "@/components/shared/loading-skeleton";
+import { TablePager } from "@/components/shared/table-pager";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { CreateUserDialog } from "@/features/users/components/create-user-dialog";
 import { useSetUserStatus, useUsers } from "@/features/users/hooks";
+import { useClientTable } from "@/hooks/use-client-table";
 import { cn } from "@/lib/utils";
 import type { User } from "@/types";
 
@@ -85,6 +87,9 @@ export default function UsersPage() {
     if (statusFilter === "inactive" && u.is_active) return false;
     return true;
   });
+  const userTable = useClientTable(filtered, {
+    initialPageSize: 10,
+  });
 
   return (
     <div className="space-y-5">
@@ -114,8 +119,19 @@ export default function UsersPage() {
         </div>
       )}
 
+      {/* Table card */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="overflow-hidden rounded-xl border bg-card shadow-sm"
+        onClick={closeMenus}
+      >
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div
+        className="flex flex-wrap items-center gap-2 border-b p-4"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="relative w-64">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -171,22 +187,10 @@ export default function UsersPage() {
             )}
           </AnimatePresence>
         </div>
-
-        <div className="ml-auto">
-          {data && <span className="text-xs text-muted-foreground">{filtered.length} รายการ</span>}
-        </div>
       </div>
 
-      {/* Table card */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2 }}
-        className="overflow-hidden rounded-xl border bg-card shadow-sm"
-        onClick={closeMenus}
-      >
         {isLoading ? (
-          <div className="p-4"><TableSkeleton rows={5} columns={4} /></div>
+          <div className="p-4"><TableSkeleton rows={5} columns={6} /></div>
         ) : isError ? (
           <div className="py-16"><EmptyState title="เกิดข้อผิดพลาด" description="ไม่สามารถโหลดข้อมูลผู้ใช้ได้" variant="error" /></div>
         ) : filtered.length === 0 ? (
@@ -197,39 +201,48 @@ export default function UsersPage() {
               variant="no-items" />
           </div>
         ) : (
-          <Table>
+          <div className="mx-4 mt-4 rounded-xl border">
+          <Table className="table-fixed">
+            <colgroup>
+              <col className="w-[8%]" />
+              <col className="w-[27%]" />
+              <col className="w-[18%]" />
+              <col className="w-[18%]" />
+              <col className="w-[19%]" />
+              <col className="w-[10%]" />
+            </colgroup>
             <TableHeader>
-              <TableRow className="border-b bg-muted/30 hover:bg-muted/30">
-                <TableHead className="w-10 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">#</TableHead>
-                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">ชื่อ-นามสกุล</TableHead>
-                <TableHead className="w-36 text-xs font-semibold uppercase tracking-wider text-muted-foreground">ชื่อผู้ใช้</TableHead>
-                <TableHead className="w-32 text-xs font-semibold uppercase tracking-wider text-muted-foreground">บทบาท</TableHead>
-                <TableHead className="w-28 text-xs font-semibold uppercase tracking-wider text-muted-foreground">สถานะ</TableHead>
-                <TableHead className="w-12 px-4" />
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="text-center text-xs font-semibold">#</TableHead>
+                <TableHead className="text-center text-xs font-semibold">ชื่อ-นามสกุล</TableHead>
+                <TableHead className="text-center text-xs font-semibold">ชื่อผู้ใช้</TableHead>
+                <TableHead className="text-center text-xs font-semibold">บทบาท</TableHead>
+                <TableHead className="text-center text-xs font-semibold">สถานะ</TableHead>
+                <TableHead className="text-center text-xs font-semibold" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((user: User, index: number) => (
+              {userTable.pageItems.map((user: User, index: number) => (
                 <motion.tr key={user.id}
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   transition={{ duration: 0.12, delay: index * 0.02 }}
                   className="group border-b transition-colors last:border-0 hover:bg-muted/30">
 
                   {/* # */}
-                  <TableCell className="w-10 px-4 text-center">
-                    <span className="text-xs font-medium text-muted-foreground">{index + 1}</span>
+                  <TableCell className="px-4 text-center">
+                    <span className="text-xs font-medium text-muted-foreground">{userTable.start + index + 1}</span>
                   </TableCell>
 
                   {/* ชื่อ — 2 บรรทัด */}
                   <TableCell className="py-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center gap-3">
                       <Avatar className="h-9 w-9 shrink-0 border border-border">
                         <AvatarFallback className={cn("text-[11px] font-bold",
                           user.role === "ADMIN" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")}>
                           {getInitials(user.full_name)}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm font-semibold leading-tight">{user.full_name}</p>
                         <p className="mt-0.5 text-xs text-muted-foreground">{user.role === "ADMIN" ? "ผู้ดูแลระบบ" : "เจ้าหน้าที่"}</p>
                       </div>
@@ -237,12 +250,12 @@ export default function UsersPage() {
                   </TableCell>
 
                   {/* username */}
-                  <TableCell>
+                  <TableCell className="text-center">
                     <span className="font-mono text-xs text-muted-foreground">{user.username}</span>
                   </TableCell>
 
                   {/* บทบาท */}
-                  <TableCell>
+                  <TableCell className="text-center">
                     {user.role === "ADMIN" ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
                         <Shield className="h-3 w-3" />ผู้ดูแลระบบ
@@ -255,7 +268,7 @@ export default function UsersPage() {
                   </TableCell>
 
                   {/* สถานะ */}
-                  <TableCell>
+                  <TableCell className="text-center">
                     {user.is_active ? (
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success">
                         <span className="h-1.5 w-1.5 rounded-full bg-success" />ใช้งาน
@@ -268,7 +281,7 @@ export default function UsersPage() {
                   </TableCell>
 
                   {/* Actions */}
-                  <TableCell className="px-4">
+                  <TableCell className="px-4 text-center">
                     <DropdownMenu>
                       <DropdownMenuTrigger render={
                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground">
@@ -292,15 +305,23 @@ export default function UsersPage() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
-      </motion.div>
-
       {/* Footer */}
       {data && filtered.length > 0 && (
-        <div className="px-1 text-xs text-muted-foreground">
-          แสดง <span className="font-medium text-foreground">{filtered.length}</span> จาก <span className="font-medium text-foreground">{data.total}</span> รายการ
+        <div className="px-4 pb-4">
+          <TablePager
+            page={userTable.page}
+            pageCount={userTable.pageCount}
+            pageSize={userTable.pageSize}
+            total={userTable.total}
+            start={userTable.start}
+            onPageChange={userTable.setPage}
+            onPageSizeChange={userTable.setPageSize}
+          />
         </div>
       )}
+      </motion.div>
 
       <ConfirmDialog
         open={!!toggleTarget}
