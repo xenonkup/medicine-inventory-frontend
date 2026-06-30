@@ -129,7 +129,7 @@ export default function UsersPage() {
       >
       {/* Toolbar */}
       <div
-        className="flex flex-wrap items-center gap-2 border-b p-4"
+        className="flex flex-wrap items-center gap-2 p-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative w-64">

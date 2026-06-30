@@ -135,10 +135,6 @@ export default function CategoriesPage() {
             )}
           </AnimatePresence>
         </div>
-
-        <div className="ml-auto">
-          {data && <span className="text-xs text-muted-foreground">{filtered.length} รายการ</span>}
-        </div>
       </div>
 
         {isLoading ? (
@@ -170,7 +166,7 @@ export default function CategoriesPage() {
                 <TableHead className="text-center text-xs font-semibold">ชื่อหมวดหมู่</TableHead>
                 <TableHead className="text-center text-xs font-semibold">คำอธิบาย</TableHead>
                 <TableHead className="text-center text-xs font-semibold">สถานะ</TableHead>
-                <TableHead className="text-center text-xs font-semibold" />
+                <TableHead className="text-center text-xs font-semibold"/>
               </TableRow>
             </TableHeader>
             <TableBody>

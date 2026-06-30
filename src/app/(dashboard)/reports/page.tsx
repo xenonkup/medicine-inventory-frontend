@@ -14,7 +14,14 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DatePicker } from "@/components/shared/date-picker";
 import {
   Table,
   TableBody,
@@ -81,8 +88,8 @@ export default function ReportsPage() {
   });
 
   const years = [now.getFullYear() - 2, now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
-  const selectClass =
-    "h-9 rounded-xl border bg-background px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const monthItems = Object.fromEntries(MONTHS.map((m, i) => [String(i + 1), m]));
+  const yearItems = Object.fromEntries(years.map((y) => [String(y), String(y)]));
 
   const kpis = [
     {
@@ -172,30 +179,38 @@ export default function ReportsPage() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <select
-                value={month}
-                onChange={(e) => setMonth(Number(e.target.value))}
-                className={selectClass}
-                aria-label="เลือกเดือน"
+              <Select
+                items={monthItems}
+                value={String(month)}
+                onValueChange={(v) => setMonth(Number((v as string | null) ?? month))}
               >
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={year}
-                onChange={(e) => setYear(Number(e.target.value))}
-                className={selectClass}
-                aria-label="เลือกปี"
+                <SelectTrigger className="h-9 w-[130px] rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m, i) => (
+                    <SelectItem key={m} value={String(i + 1)}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                items={yearItems}
+                value={String(year)}
+                onValueChange={(v) => setYear(Number((v as string | null) ?? year))}
               >
-                {years.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-9 w-[100px] rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Button
                 variant="ghost"
                 size="icon"
@@ -214,22 +229,18 @@ export default function ReportsPage() {
           </div>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
-            <Input
-              type="date"
+            <DatePicker
               value={from}
               max={to || undefined}
-              onChange={(e) => setFrom(e.target.value)}
-              className="h-9 w-auto rounded-xl"
-              aria-label="ตั้งแต่วันที่"
+              onChange={setFrom}
+              placeholder="ตั้งแต่วันที่"
             />
             <span className="text-sm text-muted-foreground">ถึง</span>
-            <Input
-              type="date"
+            <DatePicker
               value={to}
               min={from || undefined}
-              onChange={(e) => setTo(e.target.value)}
-              className="h-9 w-auto rounded-xl"
-              aria-label="ถึงวันที่"
+              onChange={setTo}
+              placeholder="ถึงวันที่"
             />
           </div>
         )}
