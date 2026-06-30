@@ -416,6 +416,7 @@ export default function MedicinesPage() {
                       />
                       <DropdownMenuContent align="end" className="w-40 rounded-xl">
                         <MedicineDialog medicine={m}
+                          triggerNativeButton={false}
                           trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Pencil className="mr-2 h-3.5 w-3.5" />แก้ไข</DropdownMenuItem>}
                         />
                         <DropdownMenuSeparator />

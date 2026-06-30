@@ -49,9 +49,15 @@ type FormValues = z.infer<typeof schema>;
 interface Props {
   medicine?: Medicine;
   trigger: ReactNode;
+  /** Set false when the trigger is not a native <button> (e.g. a menu item). */
+  triggerNativeButton?: boolean;
 }
 
-export function MedicineDialog({ medicine, trigger }: Props) {
+export function MedicineDialog({
+  medicine,
+  trigger,
+  triggerNativeButton = true,
+}: Props) {
   const [open, setOpen] = useState(false);
   const { data: categoriesData } = useCategories();
   const createMedicine = useCreateMedicine();
@@ -110,7 +116,10 @@ export function MedicineDialog({ medicine, trigger }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={trigger as React.ReactElement} />
+      <DialogTrigger
+        nativeButton={triggerNativeButton}
+        render={trigger as React.ReactElement}
+      />
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-3">

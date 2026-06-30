@@ -85,7 +85,7 @@ export default function CategoriesPage() {
             placeholder="ค้นหาหมวดหมู่..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-8 rounded-lg border-border bg-background pl-8 text-xs transition-colors"
+            className="h-9 rounded-xl pl-9"
           />
         </div>
 
@@ -97,7 +97,7 @@ export default function CategoriesPage() {
             type="button"
             onClick={() => setShowStatusMenu((v) => !v)}
             className={cn(
-              "inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors",
+              "inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium",
               statusFilter !== "all"
                 ? "border-primary/30 bg-primary/10 text-primary"
                 : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -218,6 +218,7 @@ export default function CategoriesPage() {
                       />
                       <DropdownMenuContent align="end" className="w-40 rounded-xl">
                         <CategoryDialog category={category}
+                          triggerNativeButton={false}
                           trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Pencil className="mr-2 h-3.5 w-3.5" />แก้ไข</DropdownMenuItem>}
                         />
                         <DropdownMenuItem className="text-destructive focus:text-destructive"
