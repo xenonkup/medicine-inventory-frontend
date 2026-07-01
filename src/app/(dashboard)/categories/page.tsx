@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Tag, Plus, Search, ChevronDown, X, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Tag, Plus, Search, ChevronDown, X, MoreHorizontal, Pencil, Trash2, Download } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -23,6 +24,7 @@ import { useCategories, useDeleteCategory } from "@/features/categories/hooks";
 import { useClientTable } from "@/hooks/use-client-table";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
+import { exportToExcel } from "@/lib/export-excel";
 import type { Category } from "@/types";
 
 type StatusFilter = "all" | "active" | "inactive";
@@ -33,6 +35,8 @@ export default function CategoriesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [editTarget, setEditTarget] = useState<Category | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const debounced = useDebounce(search, 300);
   const { data, isLoading, isError } = useCategories(debounced);
@@ -49,9 +53,36 @@ export default function CategoriesPage() {
     if (statusFilter === "inactive" && c.is_active) return false;
     return true;
   });
-  const categoryTable = useClientTable(filtered, {
+  const categoryTable = useClientTable<Category>(filtered, {
     initialPageSize: 10,
   });
+
+  const pageIds = categoryTable.pageItems.map((c) => c.id);
+  const isAllPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const isSomeSelected = selectedIds.size > 0;
+  const toggleAll = () => {
+    if (isAllPageSelected) {
+      setSelectedIds((prev) => { const s = new Set(prev); pageIds.forEach((id) => s.delete(id)); return s; });
+    } else {
+      setSelectedIds((prev) => { const s = new Set(prev); pageIds.forEach((id) => s.add(id)); return s; });
+    }
+  };
+  const toggleRow = (id: string) =>
+    setSelectedIds((prev) => { const s = new Set(prev); if (s.has(id)) { s.delete(id); } else { s.add(id); } return s; });
+
+  const handleExcelDownload = () => {
+    const exportData = isSomeSelected ? filtered.filter((c: Category) => selectedIds.has(c.id)) : filtered;
+    exportToExcel([{
+      name: "หมวดหมู่ยา",
+      headers: ["#", "ชื่อหมวดหมู่", "คำอธิบาย", "สถานะ"],
+      rows: exportData.map((c: Category, i: number) => [
+        i + 1,
+        c.name,
+        c.description ?? "",
+        c.is_active ? "ใช้งาน" : "ปิดใช้งาน",
+      ]),
+    }], "categories");
+  };
 
   return (
     <div className="space-y-5">
@@ -60,9 +91,15 @@ export default function CategoriesPage() {
         description="จัดการหมวดหมู่สำหรับจัดกลุ่มยา"
         icon={Tag}
         actions={
-          <CategoryDialog trigger={
-            <Button className="rounded-xl"><Plus className="mr-2 h-4 w-4" />เพิ่มหมวดหมู่</Button>
-          } />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs" onClick={handleExcelDownload} disabled={filtered.length === 0}>
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              {isSomeSelected ? `Excel (${selectedIds.size})` : "Excel"}
+            </Button>
+            <CategoryDialog trigger={
+              <Button className="rounded-xl"><Plus className="mr-2 h-4 w-4" />เพิ่มหมวดหมู่</Button>
+            } />
+          </div>
         }
       />
 
@@ -154,14 +191,18 @@ export default function CategoriesPage() {
           <div className="mx-4 mt-4 rounded-xl border">
           <Table className="table-fixed">
             <colgroup>
-              <col className="w-[10%]" />
-              <col className="w-[28%]" />
-              <col className="w-[34%]" />
-              <col className="w-[18%]" />
-              <col className="w-[10%]" />
+              <col className="w-10" />
+              <col className="w-[9%]" />
+              <col className="w-[26%]" />
+              <col className="w-[32%]" />
+              <col className="w-[16%]" />
+              <col className="w-[9%]" />
             </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
+                <TableHead className="px-3">
+                  <Checkbox checked={isAllPageSelected} onCheckedChange={toggleAll} aria-label="เลือกทั้งหมด" />
+                </TableHead>
                 <TableHead className="text-center text-xs font-semibold">#</TableHead>
                 <TableHead className="text-center text-xs font-semibold">ชื่อหมวดหมู่</TableHead>
                 <TableHead className="text-center text-xs font-semibold">คำอธิบาย</TableHead>
@@ -178,6 +219,10 @@ export default function CategoriesPage() {
                   transition={{ duration: 0.12, delay: index * 0.02 }}
                   className="group border-b transition-colors last:border-0 hover:bg-muted/30"
                 >
+                  {/* checkbox */}
+                  <TableCell className="px-3">
+                    <Checkbox checked={selectedIds.has(category.id)} onCheckedChange={() => toggleRow(category.id)} aria-label={`เลือก ${category.name}`} />
+                  </TableCell>
                   {/* # */}
                   <TableCell className="px-4 text-center">
                     <span className="text-xs font-medium text-muted-foreground">{categoryTable.start + index + 1}</span>
@@ -217,10 +262,9 @@ export default function CategoriesPage() {
                         }
                       />
                       <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                        <CategoryDialog category={category}
-                          triggerNativeButton={false}
-                          trigger={<DropdownMenuItem onSelect={(e) => e.preventDefault()}><Pencil className="mr-2 h-3.5 w-3.5" />แก้ไข</DropdownMenuItem>}
-                        />
+                        <DropdownMenuItem onClick={() => setEditTarget(category)}>
+                          <Pencil className="mr-2 h-3.5 w-3.5" />แก้ไข
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive focus:text-destructive"
                           onClick={() => setDeleteTarget(category.id)} disabled={!category.is_active}>
                           <Trash2 className="mr-2 h-3.5 w-3.5" />ปิดใช้งาน
@@ -249,6 +293,12 @@ export default function CategoriesPage() {
         </div>
       )}
       </motion.div>
+
+      <CategoryDialog
+        category={editTarget ?? undefined}
+        open={!!editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+      />
 
       <ConfirmDialog
         open={!!deleteTarget}

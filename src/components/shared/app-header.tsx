@@ -10,6 +10,9 @@ import {
   LogOut,
   User as UserIcon,
   ChevronRight,
+  AlertTriangle,
+  PackageOpen,
+  CheckCircle2,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -24,6 +27,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Breadcrumb,
@@ -34,8 +42,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { useLogout } from "@/features/auth/hooks";
+import { useNearExpiry, useLowStock } from "@/features/dashboard/hooks";
 import { ROLE_LABELS, PAGE_TITLES } from "@/lib/constants";
 import { useAuth } from "@/providers/auth-provider";
+import type { NearExpiryItem, LowStockItem } from "@/types";
 
 function getInitials(name: string) {
   return name
@@ -51,6 +61,9 @@ export function AppHeader() {
   const { user } = useAuth();
   const logout = useLogout();
   const { theme, setTheme } = useTheme();
+  const { data: nearExpiry } = useNearExpiry();
+  const { data: lowStock } = useLowStock();
+  const totalNotifications = (nearExpiry?.length ?? 0) + (lowStock?.length ?? 0);
 
   const pageInfo = useMemo(() => {
     const match = Object.entries(PAGE_TITLES).find(([path]) =>
@@ -104,15 +117,105 @@ export function AppHeader() {
       {/* Actions */}
       <div className="flex items-center gap-1">
         {/* Notifications */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative h-9 w-9 rounded-xl"
-          aria-label="Notifications"
-        >
-          <Bell className="h-4 w-4 text-muted-foreground" />
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-destructive" />
-        </Button>
+        <Popover>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative h-9 w-9 rounded-xl"
+                aria-label="Notifications"
+              >
+                <Bell className="h-4 w-4 text-muted-foreground" />
+                {totalNotifications > 0 && (
+                  <span className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-white">
+                    {totalNotifications > 99 ? "99+" : totalNotifications}
+                  </span>
+                )}
+              </Button>
+            }
+          />
+          <PopoverContent
+            side="bottom"
+            align="end"
+            sideOffset={8}
+            className="w-80 p-0"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b px-4 py-3">
+              <p className="text-sm font-semibold">การแจ้งเตือน</p>
+              {totalNotifications > 0 && (
+                <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+                  {totalNotifications} รายการ
+                </span>
+              )}
+            </div>
+
+            <div className="max-h-96 overflow-y-auto">
+              {totalNotifications === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-10 text-center">
+                  <CheckCircle2 className="h-8 w-8 text-green-500" />
+                  <p className="text-sm font-medium">ไม่มีการแจ้งเตือน</p>
+                  <p className="text-xs text-muted-foreground">สต็อกและวันหมดอายุอยู่ในเกณฑ์ปกติ</p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {/* Near expiry */}
+                  {(nearExpiry?.length ?? 0) > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 bg-amber-50 px-4 py-2 dark:bg-amber-950/20">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                          ยาใกล้หมดอายุ ({nearExpiry!.length})
+                        </p>
+                      </div>
+                      {nearExpiry!.map((item: NearExpiryItem) => (
+                        <div key={`${item.medicine_id}-${item.lot_number}`} className="flex items-start gap-3 px-4 py-2.5 hover:bg-muted/40">
+                          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/30">
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium">{item.medicine_name}</p>
+                            <p className="text-[11px] text-muted-foreground">Lot: {item.lot_number} · เหลือ {item.qty_remaining} หน่วย</p>
+                            <p className={`text-[11px] font-medium ${item.days_left <= 30 ? "text-destructive" : "text-amber-600"}`}>
+                              หมดอายุใน {item.days_left} วัน
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Low stock */}
+                  {(lowStock?.length ?? 0) > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 bg-red-50 px-4 py-2 dark:bg-red-950/20">
+                        <PackageOpen className="h-3.5 w-3.5 text-destructive" />
+                        <p className="text-xs font-semibold text-destructive">
+                          สต็อกต่ำ ({lowStock!.length})
+                        </p>
+                      </div>
+                      {lowStock!.map((item: LowStockItem) => (
+                        <div key={item.medicine_id} className="flex items-start gap-3 px-4 py-2.5 hover:bg-muted/40">
+                          <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/30">
+                            <PackageOpen className="h-3.5 w-3.5 text-destructive" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium">{item.name}</p>
+                            <p className="text-[11px] text-muted-foreground">รหัส: {item.code}</p>
+                            <p className="text-[11px] font-medium text-destructive">
+                              คงเหลือ {item.stock_on_hand} {item.unit} (ขั้นต่ำ {item.reorder_level})
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Theme toggle */}
         <Button

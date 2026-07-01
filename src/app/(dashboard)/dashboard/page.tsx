@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -22,10 +23,12 @@ import {
   Activity,
   ArrowRight,
   Search,
+  Download,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { TablePager } from "@/components/shared/table-pager";
 import { useClientTable } from "@/hooks/use-client-table";
@@ -55,7 +58,10 @@ import {
   useNearExpiry,
 } from "@/features/dashboard/hooks";
 import { useMonthlyReport, useStockByCategory } from "@/features/reports/hooks";
+import { useTransactions } from "@/features/inventory/hooks";
+import type { StockTransaction, NearExpiryItem, LowStockItem, CategoryStockItem, MovementByType } from "@/types";
 import { useAuth } from "@/providers/auth-provider";
+import { exportToExcel } from "@/lib/export-excel";
 import { ROUTES } from "@/lib/constants";
 
 const quickActions = [
@@ -89,44 +95,32 @@ const quickActions = [
   },
 ];
 
-const mockTimeline = [
-  {
-    id: "1",
-    icon: PackagePlus,
-    iconColor: "text-success",
-    iconBg: "bg-success/10",
-    title: "รับเข้า Paracetamol 500mg",
-    description: "ล็อต P2026-001 — 1000 เม็ด",
-    time: "5 นาทีที่แล้ว",
-  },
-  {
-    id: "2",
-    icon: PackageMinus,
-    iconColor: "text-destructive",
-    iconBg: "bg-destructive/10",
-    title: "จ่ายออก Amoxicillin 250mg",
-    description: "อ้างอิง RX-2024-0892 — 30 เม็ด",
-    time: "15 นาทีที่แล้ว",
-  },
-  {
-    id: "3",
-    icon: AlertTriangle,
-    iconColor: "text-warning",
-    iconBg: "bg-warning/10",
-    title: "แจ้งเตือนยาใกล้หมดอายุ",
-    description: "Ibuprofen 400mg — เหลือ 15 วัน",
-    time: "1 ชั่วโมงที่แล้ว",
-  },
-  {
-    id: "4",
-    icon: RotateCcw,
-    iconColor: "text-primary",
-    iconBg: "bg-primary/10",
-    title: "รับคืน Omeprazole 20mg",
-    description: "ล็อต O2026-003 — 10 เม็ด",
-    time: "2 ชั่วโมงที่แล้ว",
-  },
-];
+const TX_CONFIG = {
+  IN:     { icon: PackagePlus,  iconColor: "text-success",     iconBg: "bg-success/10",     label: "รับเข้า" },
+  OUT:    { icon: PackageMinus, iconColor: "text-destructive",  iconBg: "bg-destructive/10", label: "จ่ายออก" },
+  RETURN: { icon: RotateCcw,   iconColor: "text-primary",      iconBg: "bg-primary/10",     label: "รับคืน" },
+} as const;
+
+function txToTimelineItem(tx: StockTransaction) {
+  const cfg = TX_CONFIG[tx.type] ?? TX_CONFIG.IN;
+  const ref = tx.reference_no ? ` · อ้างอิง ${tx.reference_no}` : "";
+  const elapsed = (() => {
+    const diff = Math.floor((Date.now() - new Date(tx.created_at).getTime()) / 1000);
+    if (diff < 60) return `${diff} วินาทีที่แล้ว`;
+    if (diff < 3600) return `${Math.floor(diff / 60)} นาทีที่แล้ว`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} ชั่วโมงที่แล้ว`;
+    return `${Math.floor(diff / 86400)} วันที่แล้ว`;
+  })();
+  return {
+    id: tx.id,
+    icon: cfg.icon,
+    iconColor: cfg.iconColor,
+    iconBg: cfg.iconBg,
+    title: `${cfg.label} ${tx.medicine_name}`,
+    description: `ล็อต ${tx.lot_number}${ref} — ${tx.quantity} หน่วย`,
+    time: elapsed,
+  };
+}
 
 type DonutDatum = {
   name: string;
@@ -261,26 +255,55 @@ export default function DashboardPage() {
   const { data: nearExpiry } = useNearExpiry();
   const { data: lowStock } = useLowStock();
   const { data: stockByCat, isLoading: isStockByCategoryLoading } = useStockByCategory();
+  const { data: txData } = useTransactions();
+  const recentTimeline = (txData?.items ?? []).slice(0, 5).map(txToTimelineItem);
   const currentDate = new Date();
   const { data: monthlyReport, isLoading: isMonthlyReportLoading } =
     useMonthlyReport(currentDate.getFullYear(), currentDate.getMonth() + 1);
 
-  const expiryTable = useClientTable(nearExpiry ?? [], {
+  const expiryTable = useClientTable<NearExpiryItem>(nearExpiry ?? [], {
     searchableText: (i) => `${i.medicine_name} ${i.lot_number}`,
     initialPageSize: 10,
   });
-  const lowStockTable = useClientTable(lowStock ?? [], {
+  const lowStockTable = useClientTable<LowStockItem>(lowStock ?? [], {
     searchableText: (i) => `${i.code} ${i.name}`,
     initialPageSize: 10,
   });
+
+  const [expirySelected, setExpirySelected] = useState<Set<string>>(new Set());
+  const [lowSelected, setLowSelected] = useState<Set<string>>(new Set());
+
+  const expiryPageKeys = expiryTable.pageItems.map((i) => `${i.medicine_id}-${i.lot_number}`);
+  const isAllExpirySelected = expiryPageKeys.length > 0 && expiryPageKeys.every((k) => expirySelected.has(k));
+  const toggleAllExpiry = () => {
+    if (isAllExpirySelected) {
+      setExpirySelected((p) => { const s = new Set(p); expiryPageKeys.forEach((k) => s.delete(k)); return s; });
+    } else {
+      setExpirySelected((p) => { const s = new Set(p); expiryPageKeys.forEach((k) => s.add(k)); return s; });
+    }
+  };
+  const toggleExpiry = (key: string) =>
+    setExpirySelected((p) => { const s = new Set(p); if (s.has(key)) { s.delete(key); } else { s.add(key); } return s; });
+
+  const lowPageKeys = lowStockTable.pageItems.map((i) => i.medicine_id);
+  const isAllLowSelected = lowPageKeys.length > 0 && lowPageKeys.every((k) => lowSelected.has(k));
+  const toggleAllLow = () => {
+    if (isAllLowSelected) {
+      setLowSelected((p) => { const s = new Set(p); lowPageKeys.forEach((k) => s.delete(k)); return s; });
+    } else {
+      setLowSelected((p) => { const s = new Set(p); lowPageKeys.forEach((k) => s.add(k)); return s; });
+    }
+  };
+  const toggleLow = (key: string) =>
+    setLowSelected((p) => { const s = new Set(p); if (s.has(key)) { s.delete(key); } else { s.add(key); } return s; });
   const stockByCategoryDonut =
-    stockByCat?.map((item, index) => ({
+    stockByCat?.map((item: CategoryStockItem, index: number) => ({
       name: item.category,
       value: item.stock,
       color: chartColors[index % chartColors.length],
     })) ?? [];
   const movementDonut =
-    monthlyReport?.movements.map((item) => ({
+    monthlyReport?.movements.map((item: MovementByType) => ({
       name: movementLabels[item.type] ?? item.type,
       value: item.total_qty,
       color: movementColors[item.type] ?? "#2563eb",
@@ -382,7 +405,26 @@ export default function DashboardPage() {
         <SectionCard
           title="ยาใกล้หมดอายุ"
           description={`ภายใน ${summary?.near_expiry_days ?? 180} วัน`}
-          >
+          action={
+            <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs"
+              disabled={!nearExpiry?.length}
+              onClick={() => {
+                const src = (nearExpiry ?? []) as NearExpiryItem[];
+                const exportData = expirySelected.size > 0
+                  ? src.filter((it: NearExpiryItem) => expirySelected.has(`${it.medicine_id}-${it.lot_number}`))
+                  : src;
+                exportToExcel([{
+                  name: "ยาใกล้หมดอายุ",
+                  headers: ["#", "ยา", "ล็อต", "หมดอายุ", "เหลือ (หน่วย)", "วันที่เหลือ"],
+                  rows: exportData.map((it: NearExpiryItem, i: number) => [i + 1, it.medicine_name, it.lot_number, it.expiry_date, it.qty_remaining, it.days_left]),
+                }], "near_expiry");
+              }}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              {expirySelected.size > 0 ? `Excel (${expirySelected.size})` : "Excel"}
+            </Button>
+          }
+        >
           <div className="relative mb-3 max-w-xs">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -397,7 +439,10 @@ export default function DashboardPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="w-20 text-xs font-semibol text-center">#</TableHead>
+                  <TableHead className="w-10 px-3">
+                    <Checkbox checked={isAllExpirySelected} onCheckedChange={toggleAllExpiry} aria-label="เลือกทั้งหมด" />
+                  </TableHead>
+                  <TableHead className="w-20 text-xs font-semibold text-center">#</TableHead>
                   <TableHead className="w-20 text-xs font-semibold">ยา</TableHead>
                   <TableHead className="w-20 text-xs font-semibold">ล็อต</TableHead>
                   <TableHead className="w-20 text-xs font-semibold">หมดอายุ</TableHead>
@@ -408,16 +453,18 @@ export default function DashboardPage() {
               <TableBody>
                 {expiryTable.total === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
                       ไม่มีรายการใกล้หมดอายุ
                     </TableCell>
                   </TableRow>
                 ) : (
-                  expiryTable.pageItems.map((it, index) => (
-                    <TableRow
-                      key={`${it.medicine_id}-${it.lot_number}`}
-                      className="group"
-                    >
+                  expiryTable.pageItems.map((it, index) => {
+                    const key = `${it.medicine_id}-${it.lot_number}`;
+                    return (
+                    <TableRow key={key} className="group">
+                      <TableCell className="px-3">
+                        <Checkbox checked={expirySelected.has(key)} onCheckedChange={() => toggleExpiry(key)} aria-label={`เลือก ${it.medicine_name}`} />
+                      </TableCell>
                       <TableCell className="text-center">
                         {expiryTable.start + index + 1}
                       </TableCell>
@@ -442,7 +489,7 @@ export default function DashboardPage() {
                         </Badge>
                       </TableCell>
                     </TableRow>
-                  ))
+                  );})
                 )}
               </TableBody>
             </Table>
@@ -464,12 +511,31 @@ export default function DashboardPage() {
         title="สต็อกต่ำ"
         description="ยาที่คงเหลือถึง/ต่ำกว่าจุดสั่งซื้อ"
         action={
-          <Link href={ROUTES.medicines}>
-            <Button variant="outline" size="sm" className="h-8 text-xs rounded-xl">
-              ดูทั้งหมด
-              <ArrowUpRight className="ml-1 h-3 w-3" />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs"
+              disabled={!lowStock?.length}
+              onClick={() => {
+                const src = (lowStock ?? []) as LowStockItem[];
+                const exportData = lowSelected.size > 0
+                  ? src.filter((it: LowStockItem) => lowSelected.has(it.medicine_id))
+                  : src;
+                exportToExcel([{
+                  name: "สต็อกต่ำ",
+                  headers: ["#", "รหัส", "ยา", "หน่วย", "คงเหลือ", "จุดสั่งซื้อ", "สถานะ"],
+                  rows: exportData.map((it: LowStockItem, i: number) => [i + 1, it.code, it.name, it.unit, it.stock_on_hand, it.reorder_level, it.stock_on_hand === 0 ? "หมดสต็อก" : "ใกล้หมด"]),
+                }], "low_stock");
+              }}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              {lowSelected.size > 0 ? `Excel (${lowSelected.size})` : "Excel"}
             </Button>
-          </Link>
+            <Link href={ROUTES.medicines}>
+              <Button variant="outline" size="sm" className="h-8 text-xs rounded-xl">
+                ดูทั้งหมด
+                <ArrowUpRight className="ml-1 h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
         }
       >
         <div className="relative mb-3 max-w-xs">
@@ -484,16 +550,20 @@ export default function DashboardPage() {
         <div className="rounded-xl border">
           <Table className="table-fixed">
             <colgroup>
-              <col className="w-[14.285%]" />
-              <col className="w-[14.285%]" />
-              <col className="w-[14.285%]" />
-              <col className="w-[14.285%]" />
-              <col className="w-[14.285%]" />
-              <col className="w-[14.285%]" />
-              <col className="w-[14.285%]" />
+              <col className="w-10" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[18%]" />
+              <col className="w-[10%]" />
+              <col className="w-[12%]" />
+              <col className="w-[12%]" />
+              <col className="w-[14%]" />
             </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
+                <TableHead className="px-3">
+                  <Checkbox checked={isAllLowSelected} onCheckedChange={toggleAllLow} aria-label="เลือกทั้งหมด" />
+                </TableHead>
                 <TableHead className="text-center text-xs font-semibold">#</TableHead>
                 <TableHead className="text-center text-xs font-semibold">รหัส</TableHead>
                 <TableHead className="text-center text-xs font-semibold">ยา</TableHead>
@@ -506,13 +576,16 @@ export default function DashboardPage() {
             <TableBody>
               {lowStockTable.total === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={8} className="h-24 text-center text-sm text-muted-foreground">
                     ไม่มีรายการสต็อกต่ำ
                   </TableCell>
                 </TableRow>
               ) : (
                 lowStockTable.pageItems.map((it, index) => (
                   <TableRow key={it.medicine_id}>
+                    <TableCell className="px-3">
+                      <Checkbox checked={lowSelected.has(it.medicine_id)} onCheckedChange={() => toggleLow(it.medicine_id)} aria-label={`เลือก ${it.name}`} />
+                    </TableCell>
                     <TableCell className="text-center font-medium">
                       {lowStockTable.start + index + 1}
                     </TableCell>
@@ -586,7 +659,11 @@ export default function DashboardPage() {
                 </Button>
               </Link>
             </div>
-            <ActivityTimeline items={mockTimeline} />
+            {recentTimeline.length > 0 ? (
+              <ActivityTimeline items={recentTimeline} />
+            ) : (
+              <p className="py-6 text-center text-sm text-muted-foreground">ยังไม่มีกิจกรรม</p>
+            )}
           </CardContent>
         </Card>
       </div>

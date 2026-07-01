@@ -33,17 +33,24 @@ type FormValues = z.infer<typeof schema>;
 
 interface Props {
   category?: Category;
-  trigger: ReactNode;
+  trigger?: ReactNode;
   /** Set false when the trigger is not a native <button> (e.g. a menu item). */
   triggerNativeButton?: boolean;
+  /** Control open state externally (omit to use internal state). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function CategoryDialog({
   category,
   trigger,
   triggerNativeButton = true,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [openInternal, setOpenInternal] = useState(false);
+  const open = openProp !== undefined ? openProp : openInternal;
+  const setOpen = onOpenChangeProp ?? setOpenInternal;
   const createCategory = useCreateCategory();
   const updateCategory = useUpdateCategory();
   const isEdit = Boolean(category);
@@ -92,10 +99,12 @@ export function CategoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        nativeButton={triggerNativeButton}
-        render={trigger as React.ReactElement}
-      />
+      {trigger && (
+        <DialogTrigger
+          nativeButton={triggerNativeButton}
+          render={trigger as React.ReactElement}
+        />
+      )}
       <DialogContent>
         <DialogHeader>
           <div className="flex items-center gap-3">

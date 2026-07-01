@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { schema, type FormValues } from "./schema/schema";
 import { Save, Pill } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,41 +30,34 @@ import {
   useCreateMedicine,
   useUpdateMedicine,
 } from "@/features/medicines/hooks";
-import type { Medicine } from "@/types";
-
-const schema = z.object({
-  code: z.string().min(1, "กรุณากรอกรหัสยา").max(50),
-  name: z.string().min(1, "กรุณากรอกชื่อยา").max(150),
-  category_id: z.string().uuid("กรุณาเลือกหมวดหมู่"),
-  unit: z.string().min(1, "กรุณากรอกหน่วยนับ").max(30),
-  reorder_level: z
-    .number({ error: "กรุณากรอกตัวเลข" })
-    .int()
-    .min(0, "ต้องไม่ติดลบ"),
-  description: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof schema>;
+import type { Category, Medicine } from "@/types";
 
 interface Props {
   medicine?: Medicine;
-  trigger: ReactNode;
+  trigger?: ReactNode;
   /** Set false when the trigger is not a native <button> (e.g. a menu item). */
   triggerNativeButton?: boolean;
+  /** Control open state externally (omit to use internal state). */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function MedicineDialog({
   medicine,
   trigger,
   triggerNativeButton = true,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [openInternal, setOpenInternal] = useState(false);
+  const open = openProp !== undefined ? openProp : openInternal;
+  const setOpen = onOpenChangeProp ?? setOpenInternal;
   const { data: categoriesData } = useCategories();
   const createMedicine = useCreateMedicine();
   const updateMedicine = useUpdateMedicine();
   const isEdit = Boolean(medicine);
 
-  const defaults: FormValues = {
+  const defaultValues: FormValues = {
     code: medicine?.code ?? "",
     name: medicine?.name ?? "",
     category_id: medicine?.category_id ?? "",
@@ -82,11 +75,11 @@ export function MedicineDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: defaults,
+    defaultValues: defaultValues,
   });
 
   useEffect(() => {
-    if (open) reset(defaults);
+    if (open) reset(defaultValues);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -109,17 +102,19 @@ export function MedicineDialog({
   };
 
   const pending = createMedicine.isPending || updateMedicine.isPending;
-  const categories = categoriesData?.categories.filter((c) => c.is_active) ?? [];
+  const categories = categoriesData?.categories.filter((c: Category) => c.is_active) ?? [];
   const categoryItems = Object.fromEntries(
-    categories.map((c) => [c.id, c.name]),
+    categories.map((c: Category) => [c.id, c.name]),
   );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        nativeButton={triggerNativeButton}
-        render={trigger as React.ReactElement}
-      />
+      {trigger && (
+        <DialogTrigger
+          nativeButton={triggerNativeButton}
+          render={trigger as React.ReactElement}
+        />
+      )}
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-3">
@@ -189,7 +184,7 @@ export function MedicineDialog({
                   <SelectValue placeholder="เลือกหมวดหมู่" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => (
+                  {categories.map((c: Category) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.name}
                     </SelectItem>

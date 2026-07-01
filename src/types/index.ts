@@ -157,4 +157,6 @@ export interface StockTransaction {
   note?: string | null;
   created_by: string;
   created_at: string;
+  medicine_name: string;
+  lot_number: string;
 }

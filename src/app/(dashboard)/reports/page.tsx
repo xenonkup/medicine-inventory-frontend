@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Printer,
   PackagePlus,
   PackageMinus,
   RotateCcw,
@@ -43,6 +42,8 @@ import {
   useStockByCategory,
 } from "@/features/reports/hooks";
 import { useClientTable } from "@/hooks/use-client-table";
+import { exportToExcel } from "@/lib/export-excel";
+import type { MovementByType, CategoryStockItem } from "@/types";
 
 const TYPE_LABELS: Record<string, string> = {
   IN: "รับเข้า",
@@ -83,9 +84,42 @@ export default function ReportsPage() {
   const report = mode === "range" ? ranged : monthly;
 
   const { data: stockByCat } = useStockByCategory();
-  const movementTable = useClientTable(report?.movements ?? [], {
+  const movementTable = useClientTable<MovementByType>(report?.movements ?? [], {
     initialPageSize: 10,
   });
+
+  const handleExcelDownload = () => {
+    const periodLabel = mode === "month"
+      ? `${MONTHS[month - 1]}_${year}`
+      : `${from}_to_${to}`;
+
+    const sheets = [];
+
+    // Sheet 1: Movement summary
+    if (report?.movements?.length) {
+      sheets.push({
+        name: "สรุปการเคลื่อนไหว",
+        headers: ["ประเภท", "จำนวนรายการ", "รวมหน่วย"],
+        rows: report.movements.map((m: MovementByType) => [
+          TYPE_LABELS[m.type] ?? m.type,
+          m.count,
+          m.total_qty,
+        ]),
+      });
+    }
+
+    // Sheet 2: Stock by category
+    if (stockByCat?.length) {
+      sheets.push({
+        name: "สต็อกตามหมวดหมู่",
+        headers: ["หมวดหมู่", "คงเหลือ (หน่วย)"],
+        rows: stockByCat.map((s: CategoryStockItem) => [s.category, s.stock]),
+      });
+    }
+
+    if (sheets.length === 0) return;
+    exportToExcel(sheets, `report_${periodLabel}`);
+  };
 
   const years = [now.getFullYear() - 2, now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1];
   const monthItems = Object.fromEntries(MONTHS.map((m, i) => [String(i + 1), m]));
@@ -121,18 +155,6 @@ export default function ReportsPage() {
         title="รายงาน"
         description="สรุปการเคลื่อนไหวสต็อกรายเดือน"
         icon={BarChart3}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs">
-              <Download className="mr-1.5 h-3.5 w-3.5" />
-              CSV
-            </Button>
-            <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs">
-              <Printer className="mr-1.5 h-3.5 w-3.5" />
-              พิมพ์
-            </Button>
-          </div>
-        }
       />
 
       {/* Filters: by month or by date range */}
@@ -323,6 +345,16 @@ export default function ReportsPage() {
       <SectionCard
         title="ตารางสรุป"
         description="สรุปการเคลื่อนไหวแยกตามประเภท"
+        action={
+          <Button
+            variant="outline" size="sm" className="h-8 rounded-xl text-xs"
+            onClick={handleExcelDownload}
+            disabled={!report?.movements?.length && !stockByCat?.length}
+          >
+            <Download className="mr-1.5 h-3.5 w-3.5" />
+            Excel
+          </Button>
+        }
       >
         <div className="rounded-xl border">
           <Table className="table-fixed">
@@ -346,7 +378,7 @@ export default function ReportsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                movementTable.pageItems.map((m) => (
+                movementTable.pageItems.map((m: MovementByType) => (
                   <TableRow key={m.type} className="hover:bg-muted/50">
                     <TableCell>
                       <div className="flex items-center justify-center gap-2.5">
