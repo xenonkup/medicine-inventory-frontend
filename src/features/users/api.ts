@@ -53,4 +53,11 @@ export const usersApi = {
     );
     return res.data.data;
   },
+
+  async resetPassword(id: string, password: string): Promise<void> {
+    await apiClient.patch<ApiResponse<{ message: string }>>(
+      `/users/${id}/password`,
+      { password },
+    );
+  },
 };

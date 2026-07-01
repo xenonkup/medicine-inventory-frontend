@@ -60,3 +60,14 @@ export function useSetUserStatus() {
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 }
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      usersApi.resetPassword(id, password),
+    onSuccess: () => {
+      toast.success("รีเซ็ตรหัสผ่านสำเร็จ");
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+}

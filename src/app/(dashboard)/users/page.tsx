@@ -23,6 +23,7 @@ import { TableSkeleton } from "@/components/shared/loading-skeleton";
 import { TablePager } from "@/components/shared/table-pager";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { CreateUserDialog } from "@/features/users/components/create-user-dialog";
+import { ResetPasswordDialog } from "@/features/users/components/reset-password-dialog";
 import { useSetUserStatus, useUsers } from "@/features/users/hooks";
 import { useClientTable } from "@/hooks/use-client-table";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,7 @@ export default function UsersPage() {
   const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [toggleTarget, setToggleTarget] = useState<{ id: string; isActive: boolean; name: string } | null>(null);
+  const [resetTarget, setResetTarget] = useState<{ id: string; name: string } | null>(null);
 
   const handleToggle = () => {
     if (toggleTarget) {
@@ -297,7 +299,11 @@ export default function UsersPage() {
                             : <><UserCheck className="mr-2 h-3.5 w-3.5" />เปิดใช้งาน</>}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>รีเซ็ตรหัสผ่าน</DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setResetTarget({ id: user.id, name: user.full_name })}
+                        >
+                          รีเซ็ตรหัสผ่าน
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -334,6 +340,11 @@ export default function UsersPage() {
         variant={toggleTarget?.isActive ? "destructive" : "default"}
         onConfirm={handleToggle}
         loading={setStatus.isPending}
+      />
+
+      <ResetPasswordDialog
+        target={resetTarget}
+        onOpenChange={(open) => !open && setResetTarget(null)}
       />
     </div>
   );
