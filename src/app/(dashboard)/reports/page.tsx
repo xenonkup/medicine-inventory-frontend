@@ -13,6 +13,7 @@ import {
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -88,6 +89,20 @@ export default function ReportsPage() {
     initialPageSize: 10,
   });
 
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
+  const pageTypes = movementTable.pageItems.map((m: MovementByType) => m.type);
+  const isAllPageSelected = pageTypes.length > 0 && pageTypes.every((t) => selectedTypes.has(t));
+  const isSomeSelected = selectedTypes.size > 0;
+  const toggleAll = () => {
+    if (isAllPageSelected) {
+      setSelectedTypes((prev) => { const s = new Set(prev); pageTypes.forEach((t) => s.delete(t)); return s; });
+    } else {
+      setSelectedTypes((prev) => { const s = new Set(prev); pageTypes.forEach((t) => s.add(t)); return s; });
+    }
+  };
+  const toggleRow = (type: string) =>
+    setSelectedTypes((prev) => { const s = new Set(prev); if (s.has(type)) { s.delete(type); } else { s.add(type); } return s; });
+
   const handleExcelDownload = () => {
     const periodLabel = mode === "month"
       ? `${MONTHS[month - 1]}_${year}`
@@ -95,12 +110,15 @@ export default function ReportsPage() {
 
     const sheets = [];
 
-    // Sheet 1: Movement summary
-    if (report?.movements?.length) {
+    // Sheet 1: Movement summary (filtered by selection if any)
+    const movementsToExport = isSomeSelected
+      ? (report?.movements ?? []).filter((m: MovementByType) => selectedTypes.has(m.type))
+      : (report?.movements ?? []);
+    if (movementsToExport.length) {
       sheets.push({
         name: "สรุปการเคลื่อนไหว",
         headers: ["ประเภท", "จำนวนรายการ", "รวมหน่วย"],
-        rows: report.movements.map((m: MovementByType) => [
+        rows: movementsToExport.map((m: MovementByType) => [
           TYPE_LABELS[m.type] ?? m.type,
           m.count,
           m.total_qty,
@@ -352,19 +370,23 @@ export default function ReportsPage() {
             disabled={!report?.movements?.length && !stockByCat?.length}
           >
             <Download className="mr-1.5 h-3.5 w-3.5" />
-            Excel
+            {isSomeSelected ? `Excel (${selectedTypes.size})` : "Excel"}
           </Button>
         }
       >
         <div className="rounded-xl border">
           <Table className="table-fixed">
             <colgroup>
-              <col className="w-[20%]" />
-              <col className="w-[20%]" />
-              <col className="w-[20%]" />
+              <col className="w-10" />
+              <col />
+              <col />
+              <col />
             </colgroup>
             <TableHeader>
               <TableRow className="hover:bg-transparent bg-muted/30">
+                <TableHead className="px-3">
+                  <Checkbox checked={isAllPageSelected} onCheckedChange={toggleAll} aria-label="เลือกทั้งหมด" />
+                </TableHead>
                 <TableHead className="text-center text-xs font-semibold">ประเภท</TableHead>
                 <TableHead className="text-center text-xs font-semibold">จำนวนรายการ</TableHead>
                 <TableHead className="text-center text-xs font-semibold">รวมหน่วย</TableHead>
@@ -373,13 +395,16 @@ export default function ReportsPage() {
             <TableBody>
               {movementTable.total === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center text-sm text-muted-foreground">
+                  <TableCell colSpan={4} className="h-24 text-center text-sm text-muted-foreground">
                     ไม่มีข้อมูลเดือนนี้
                   </TableCell>
                 </TableRow>
               ) : (
                 movementTable.pageItems.map((m: MovementByType) => (
                   <TableRow key={m.type} className="hover:bg-muted/50">
+                    <TableCell className="px-3">
+                      <Checkbox checked={selectedTypes.has(m.type)} onCheckedChange={() => toggleRow(m.type)} aria-label={`เลือก ${TYPE_LABELS[m.type]}`} />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-2.5">
                         <div className={`h-2 w-2 rounded-full ${m.type === "IN" ? "bg-success" :
