@@ -5,16 +5,13 @@ import { Settings as SettingsIcon, Bell, Calendar, Save, Sliders } from "lucide-
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/shared/page-header";
 import { FormField } from "@/components/shared/form-field";
 import { useSettings, useUpdateSetting } from "@/features/settings/hooks";
 import { useAuth } from "@/providers/auth-provider";
+import type { Setting } from "@/types";
 
 const NEAR_EXPIRY_KEY = "near_expiry_days";
 
@@ -23,7 +20,7 @@ export default function SettingsPage() {
   const { data: settings } = useSettings();
   const updateSetting = useUpdateSetting();
 
-  const nearExpiry = settings?.find((s) => s.key === NEAR_EXPIRY_KEY);
+  const nearExpiry = settings?.find((s: Setting) => s.key === NEAR_EXPIRY_KEY);
   const [days, setDays] = useState("");
 
   useEffect(() => {
@@ -165,7 +162,7 @@ export default function SettingsPage() {
             </p>
           </div>
           <CardContent className="divide-y p-0">
-            {settings.map((s) => (
+            {settings.map((s: Setting) => (
               <div
                 key={s.key}
                 className="flex items-center justify-between px-6 py-3.5"

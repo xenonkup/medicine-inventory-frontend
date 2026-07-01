@@ -1,10 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { PackagePlus, Save, Hash, Calendar, Boxes, FileText } from "lucide-react";
+import { PackagePlus, Save, Hash, Boxes, FileText } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { StockInSchema } from "./schema/schema";
+import type { StockInFormValues } from "./schema/schema";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,16 +13,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { FormField } from "@/components/shared/form-field";
 import { MedicineSelect } from "@/features/inventory/components/medicine-select";
 import { useStockIn } from "@/features/inventory/hooks";
-
-const schema = z.object({
-  medicine_id: z.string().uuid("กรุณาเลือกยา"),
-  lot_number: z.string().min(1, "กรุณากรอกเลขล็อต").max(60),
-  expiry_date: z.string().min(1, "กรุณาเลือกวันหมดอายุ"),
-  quantity: z.number({ error: "กรุณากรอกจำนวน" }).int().positive("ต้องมากกว่า 0"),
-  reference_no: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof schema>;
+import { DatePicker } from "@/components/shared/date-picker";
 
 export default function StockInPage() {
   const stockIn = useStockIn();
@@ -32,8 +24,8 @@ export default function StockInPage() {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  } = useForm<StockInFormValues>({
+    resolver: zodResolver(StockInSchema),
     defaultValues: {
       medicine_id: "",
       lot_number: "",
@@ -43,7 +35,9 @@ export default function StockInPage() {
     },
   });
 
-  const onSubmit = (values: FormValues) => {
+  const expiryDate = watch("expiry_date");
+
+  const onSubmit = (values: StockInFormValues) => {
     stockIn.mutate(
       { ...values, reference_no: values.reference_no || null },
       { onSuccess: () => reset() },
@@ -113,15 +107,14 @@ export default function StockInPage() {
                   required
                   error={errors.expiry_date?.message}
                 >
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="expiry_date"
-                      type="date"
-                      className="h-11 rounded-xl bg-muted/50 pl-9 transition-colors focus-visible:bg-background"
-                      {...register("expiry_date")}
-                    />
-                  </div>
+                  <DatePicker
+                    value={expiryDate}
+                    onChange={(value) =>
+                      setValue("expiry_date", value, { shouldValidate: true })
+                    }
+                    placeholder="เลือกวันที่หมดอายุ"
+                    className="h-11 w-full bg-muted/50"
+                  />
                 </FormField>
               </div>
 

@@ -12,8 +12,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type { Medicine } from "@/types";
 
 interface ConfirmDialogProps {
+  medicine?: Medicine;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
